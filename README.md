@@ -101,9 +101,11 @@ TP1-regresion-insurance/
 │   ├── raw/
 │   │   └── insurance.csv        # Fuente de verdad. Versionado en git.
 │   └── processed/               # Splits generados (regenerables, no versionados)
-├── notebooks/                   # Un notebook por fase, narrativo
+├── notebooks/
+│   └── 01_carga_y_split.ipynb   # Fase 1: carga y separación train/test
 ├── src/
-│   └── config.py                # Rutas, semilla y esquema de partición
+│   ├── config.py                # Rutas, semilla y esquema de partición
+│   └── data.py                  # Carga, split, auditoría y persistencia
 ├── reports/
 │   └── figures/                 # Gráficos para la presentación
 ├── requirements.txt
@@ -130,6 +132,26 @@ pip install -r requirements.txt
 
 En VS Code: `Ctrl+Shift+P` → *Python: Select Interpreter* → elegir `.venv`.
 
+### Regenerar los splits
+
+Los archivos de `data/processed/` no se versionan porque se reconstruyen de forma
+determinista a partir del CSV crudo y la semilla de `src/config.py`:
+
+```bash
+python -m src.data
+```
+
+---
+
+## Decisiones tomadas
+
+| Fase | Decisión | Valor | Justificación breve |
+|---|---|---|---|
+| 1 | Momento del split | Inmediatamente tras la carga | Evitar data leakage (Clase 2, slides 93–96) |
+| 1 | Proporción train/test | 80 / 20 → 1070 / 268 filas | El dev fijo del esquema 60-20-20 se reemplaza por k-fold sobre train |
+| 1 | Estratificación | Por `smoker` | Sin ella la proporción de fumadores en test varía entre 12.7% y 26.9% según la semilla |
+| 1 | Semilla | 42 | Reproducibilidad del resultado en la defensa |
+
 ---
 
 ## Checklist de fases
@@ -139,10 +161,12 @@ En VS Code: `Ctrl+Shift+P` → *Python: Select Interpreter* → elegir `.venv`.
   - [x] Entorno virtual y `requirements.txt` con versiones fijadas
   - [x] `.gitignore` y README inicial
   - [x] Dataset en `data/raw/insurance.csv`
-- [ ] **Fase 1 — Carga y separación de datos** *(consigna 2.1)*
-  - [ ] Carga desde ruta local y verificación de integridad
-  - [ ] Split train/test con semilla fija, antes de cualquier limpieza
-  - [ ] Justificación de la proporción y del método de separación
+- [x] **Fase 1 — Carga y separación de datos** *(consigna 2.1)* → [`notebooks/01_carga_y_split.ipynb`](notebooks/01_carga_y_split.ipynb)
+  - [x] Carga desde ruta local y verificación de integridad
+  - [x] Split train/test con semilla fija, antes de cualquier limpieza
+  - [x] Justificación de la proporción (80/20) y de la estratificación (por `smoker`)
+  - [x] Auditoría del split: sin solapamiento de índices ni filas idénticas compartidas
+  - [x] Splits persistidos en `data/processed/`
 - [ ] **Fase 2 — Análisis exploratorio (sólo sobre train)** *(consignas 1.2, 1.3)*
   - [ ] Tipos de variables
   - [ ] Valores faltantes: análisis y estrategia
