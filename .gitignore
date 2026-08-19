@@ -1,0 +1,36 @@
+# ---- Entorno virtual ----
+.venv/
+venv/
+env/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# ---- Jupyter ----
+.jupyter/
+*.nbconvert.ipynb
+
+# ---- Datos derivados ----
+# El CSV original (data/raw/) SI se versiona: es la fuente de verdad del TP.
+# Los splits y datasets procesados NO: se regeneran de forma determinista
+# ejecutando el codigo con la semilla fijada en src/config.py.
+data/processed/*
+!data/processed/.gitkeep
+
+# ---- Salidas regenerables ----
+# Las figuras se regeneran desde los notebooks. Si alguna la usas en la
+# presentacion y no queres depender de re-ejecutar, forzala con: git add -f
+reports/figures/*
+!reports/figures/.gitkeep
+
+# ---- Sistema operativo / editor ----
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/*
+!.vscode/settings.json
+.vs/

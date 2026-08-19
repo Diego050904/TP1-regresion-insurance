@@ -1,0 +1,12 @@
+{
+  // Interprete del entorno virtual del proyecto.
+  "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+
+  // Ejecuta los notebooks con la raiz del repo como directorio de trabajo.
+  // Sin esto, un notebook en notebooks/ no puede hacer "from src.config import ..."
+  // porque su cwd seria notebooks/ y la carpeta src/ no estaria en sys.path.
+  "jupyter.notebookFileRoot": "${workspaceFolder}",
+
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true
+}

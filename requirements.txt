@@ -1,0 +1,23 @@
+# TP1 - Aprendizaje Automatico (72.75) - ITBA
+# Versiones fijadas para que el entorno sea reproducible el dia de la defensa.
+# Instalacion:  pip install -r requirements.txt
+# Verificado sobre Python 3.14.4 (Windows 11).
+
+# --- Nucleo: datos y calculo ---
+numpy==2.5.2
+pandas==3.0.5
+
+# --- Modelado y metricas ---
+scikit-learn==1.9.0
+scipy==1.18.0
+
+# --- Visualizacion (EDA, outliers, curvas de error) ---
+matplotlib==3.11.1
+seaborn==0.13.2
+
+# --- Entorno de notebooks ---
+jupyterlab==4.6.3
+ipykernel==7.3.0
+
+# NOTA: kagglehub NO es una dependencia del proyecto. El dataset se lee siempre
+# desde data/raw/insurance.csv (ver README, seccion "Origen del dataset").
