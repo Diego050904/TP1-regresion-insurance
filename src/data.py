@@ -1,14 +1,19 @@
 """Carga del dataset crudo y separacion train/test.
 
-Este modulo cubre las dos primeras etapas del pipeline de la Clase 2
-(slides 93-96): "Recoleccion de datos" y, inmediatamente despues, la
-separacion del conjunto de test.
+Cubre los pasos 2 y 3 del pipeline clasico de un proyecto de ML (Clase 3, slide 16):
 
-REGLA CENTRAL: aca NO se limpia, NO se imputa y NO se calcula ningun
-estadistico sobre los datos. Lo unico que se hace es leer el archivo,
-verificar su integridad estructural y partirlo. Cualquier transformacion
-que dependa de un estadistico (media, mediana, IQR, escalado...) se ajusta
-mas adelante usando exclusivamente el train.
+    1. Definicion del problema
+    2. Recoleccion de datos        <- este modulo
+    3. Data Splitting              <- este modulo
+    4. Limpieza de datos
+    5. EDA
+    ...
+
+REGLA CENTRAL: aca NO se limpia, NO se imputa y NO se calcula ningun estadistico
+para transformar los datos. Lo unico que se hace es leer el archivo, verificar su
+integridad estructural y partirlo. Cualquier transformacion que dependa de un
+estadistico (media, mediana, IQR, escalado...) se ajusta mas adelante usando
+exclusivamente el train.
 
 Uso como script (regenera los splits en data/processed/):
     python -m src.data
@@ -32,9 +37,6 @@ from src.config import (
 # despues disfrazado de un resultado raro.
 COLUMNAS_ESPERADAS = ["age", "sex", "bmi", "children", "smoker", "region", "charges"]
 FILAS_ESPERADAS = 1338
-
-# Variable usada para estratificar el split (ver justificacion en el notebook 01).
-COLUMNA_ESTRATIFICACION = "smoker"
 
 TRAIN_PATH = PROCESSED_DIR / "train.csv"
 TEST_PATH = PROCESSED_DIR / "test.csv"
@@ -73,28 +75,22 @@ def separar_train_test(
     df: pd.DataFrame,
     test_size: float = TEST_SIZE,
     random_state: int = RANDOM_SEED,
-    estratificar_por: str | None = COLUMNA_ESTRATIFICACION,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Separa el dataset en train y test.
+    """Separa el dataset en train y test mediante muestreo aleatorio simple.
 
-    Se hace inmediatamente despues de la carga, antes de cualquier limpieza,
-    para evitar data leakage: si se imputaran valores o se quitaran outliers
-    usando el dataset completo, informacion que luego va al test estaria
-    influyendo en el train.
+    Criterio (Clase 3, slide 30): "crear el conjunto de test y separar esos datos
+    para no volverlos a usar hasta el final del proyecto. Tipicamente seleccionar
+    aleatoriamente 20% de los datos".
 
-    La estratificacion por `smoker` garantiza que la proporcion de fumadores
-    sea la misma en train y test. Es la variable que mas condiciona el target
-    (la media de charges de un fumador es casi 4 veces la de un no fumador),
-    de modo que un desbalance entre conjuntos haria que el error de test
-    dependiera mas de la suerte del sorteo que del modelo.
+    Se hace inmediatamente despues de la carga, antes de cualquier limpieza, para
+    evitar data leakage: si se imputaran valores o se quitaran outliers usando el
+    dataset completo, informacion que luego va al test estaria influyendo en el
+    train (Clase 2, slides 93-96).
     """
-    estratos = df[estratificar_por] if estratificar_por else None
-
     train, test = train_test_split(
         df,
         test_size=test_size,
         random_state=random_state,
-        stratify=estratos,
         shuffle=True,
     )
 
@@ -106,9 +102,9 @@ def separar_train_test(
 def verificar_split(train: pd.DataFrame, test: pd.DataFrame) -> dict:
     """Controles de integridad del split. Devuelve un resumen y falla si algo no cierra.
 
-    El control importante es el tercero: dos filas identicas repartidas entre
-    train y test serian una forma silenciosa de leakage (el modelo habria visto
-    en entrenamiento un dato exactamente igual al que se le evalua).
+    El control importante es el tercero: dos filas identicas repartidas entre train
+    y test serian una forma silenciosa de leakage (el modelo habria visto en
+    entrenamiento un dato exactamente igual al que se le evalua).
     """
     n_total = len(train) + len(test)
 
@@ -132,8 +128,6 @@ def verificar_split(train: pd.DataFrame, test: pd.DataFrame) -> dict:
         "prop_test": len(test) / n_total,
         "solapamiento_indices": len(solapamiento),
         "filas_identicas_compartidas": len(filas_compartidas),
-        "prop_fumadores_train": (train[COLUMNA_ESTRATIFICACION] == "yes").mean(),
-        "prop_fumadores_test": (test[COLUMNA_ESTRATIFICACION] == "yes").mean(),
         "media_target_train": train[TARGET].mean(),
         "media_target_test": test[TARGET].mean(),
     }
@@ -153,8 +147,8 @@ def guardar_splits(train: pd.DataFrame, test: pd.DataFrame) -> None:
 def cargar_splits() -> tuple[pd.DataFrame, pd.DataFrame]:
     """Lee los splits ya generados. Es la puerta de entrada de las fases 2 en adelante.
 
-    A partir de aca ningun notebook vuelve a abrir el CSV crudo: asi es
-    imposible recalcular por error un estadistico sobre el dataset completo.
+    A partir de aca ningun notebook vuelve a abrir el CSV crudo: asi es imposible
+    recalcular por error un estadistico sobre el dataset completo.
     """
     if not TRAIN_PATH.exists() or not TEST_PATH.exists():
         raise FileNotFoundError(
@@ -173,15 +167,13 @@ def main() -> None:
 
     print(f"Dataset crudo      : {df.shape[0]} filas x {df.shape[1]} columnas")
     print(f"Semilla            : {RANDOM_SEED}")
-    print(f"Estratificado por  : {COLUMNA_ESTRATIFICACION}")
+    print(f"Metodo             : muestreo aleatorio simple")
     print("-" * 58)
     print(f"Train              : {resumen['n_train']:5d} filas "
           f"({1 - resumen['prop_test']:.1%})")
     print(f"Test               : {resumen['n_test']:5d} filas "
           f"({resumen['prop_test']:.1%})")
     print("-" * 58)
-    print(f"Fumadores en train : {resumen['prop_fumadores_train']:.2%}")
-    print(f"Fumadores en test  : {resumen['prop_fumadores_test']:.2%}")
     print(f"Media charges train: {resumen['media_target_train']:10,.2f}")
     print(f"Media charges test : {resumen['media_target_test']:10,.2f}")
     print("-" * 58)

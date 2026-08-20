@@ -147,10 +147,11 @@ python -m src.data
 
 | Fase | Decisión | Valor | Justificación breve |
 |---|---|---|---|
-| 1 | Momento del split | Inmediatamente tras la carga | Evitar data leakage (Clase 2, slides 93–96) |
-| 1 | Proporción train/test | 80 / 20 → 1070 / 268 filas | El dev fijo del esquema 60-20-20 se reemplaza por k-fold sobre train |
-| 1 | Estratificación | Por `smoker` | Sin ella la proporción de fumadores en test varía entre 12.7% y 26.9% según la semilla |
-| 1 | Semilla | 42 | Reproducibilidad del resultado en la defensa |
+| 1 | Momento del split | Inmediatamente tras la carga | Paso 3 del pipeline (Clase 3, slide 16); evitar data leakage (Clase 2, slides 93–96) |
+| 1 | Método de separación | Muestreo aleatorio simple | Clase 3, slide 30 |
+| 1 | Proporción train/test | 80 / 20 → 1070 / 268 filas | Clase 3 slide 30; el dev fijo del 60-20-20 se reemplaza por k-fold sobre train (Clase 2 slide 85) |
+| 1 | Semilla | 42, en `src/config.py` | Reproducibilidad del resultado en la defensa |
+| 1 | Duplicados | Detectados y documentados | Su tratamiento corresponde al paso 4 del pipeline (Fase 2) |
 
 ---
 
