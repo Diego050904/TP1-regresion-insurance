@@ -173,20 +173,22 @@ python -m src.data
   - [ ] Duplicados
   - [ ] Outliers: detección visual (boxplot, histograma, scatter) y estadística (IQR, z-score)
   - [ ] Decisión justificada sobre qué hacer con los outliers
-- [ ] **Fase 3 — Preprocesamiento** *(consignas 1.1, 1.4)*
+- [ ] **Fase 3 — Preprocesamiento y features** *(consignas 1.1, 1.4)*
   - [ ] Encoding de categóricas, con justificación por variable
   - [ ] Imputación (si corresponde), con estadísticos del train
-  - [ ] Selección de features y escalado, justificados
+  - [ ] Escalado por z-score (`StandardScaler`), ajustado sólo con train
+  - [ ] Filtros de selección: correlación de Pearson e información mutua
   - [ ] Todo encapsulado en un `Pipeline` ajustado sólo con train
 - [ ] **Fase 4 — Regresión lineal** *(consignas 2.2, 2.3)*
   - [ ] k-fold cross-validation sobre el train
   - [ ] Entrenamiento dentro del CV
   - [ ] RMSE de train y de validación
-- [ ] **Fase 5 — Regresión polinómica y regularización** *(consignas 3.1, 3.2, 3.3, 4)*
+- [ ] **Fase 5 — Regresión polinómica, selección y regularización** *(consignas 3.1, 3.2, 3.3, 4)*
   - [ ] Transformación polinómica para varios grados
   - [ ] Entrenamiento sobre las variables transformadas
-  - [ ] Regularización L1 (Lasso) con un par de valores de lambda
-  - [ ] Tabla de RMSE de validación por grado y lambda
+  - [ ] Selección wrapper (RFE/RFECV) sobre el espacio polinómico, dentro del CV
+  - [ ] Regularización L1 (Lasso) con un par de valores de lambda (selección embedded)
+  - [ ] Tabla de RMSE de train y validación por grado y lambda
 - [ ] **Fase 6 — Evaluación final y comparación** *(consigna 5)*
   - [ ] Evaluación en test (una única vez)
   - [ ] ¿Qué modelo obtuvo menor error?
@@ -203,3 +205,4 @@ python -m src.data
 
 - Enunciado: *TP1. Regresión e Introducción a la evaluación de modelos* — 72.75, 2026 Q2.
 - *Clase 2: Datos, variables, overfitting y métricas* — Carlos Bibián Nogueras, PhD.
+- *Clase 3: EDA, Feature selection, Regularización y Métricas* — Carlos Bibián Nogueras, PhD.

@@ -1,0 +1,20 @@
+# Normalizacion de saltos de linea.
+# Sin esto, Git for Windows convierte a CRLF al hacer checkout y avisa en cada
+# "git add". Fijando LF, el contenido es identico en Windows, macOS y Linux, y
+# los diffs de los notebooks (que son JSON en una sola pieza) se mantienen legibles.
+
+# Por defecto: detectar archivos de texto y guardarlos siempre con LF.
+* text=auto eol=lf
+
+# Explicitos, por claridad.
+*.py    text eol=lf
+*.md    text eol=lf
+*.csv   text eol=lf
+*.txt   text eol=lf
+*.json  text eol=lf
+*.ipynb text eol=lf
+
+# Binarios: Git no debe tocarlos nunca.
+*.png binary
+*.jpg binary
+*.pdf binary
