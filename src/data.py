@@ -1,19 +1,10 @@
-"""Carga del dataset crudo y separacion train/test.
+"""Carga del dataset y separacion train/test.
 
-Cubre los pasos 2 y 3 del pipeline clasico de un proyecto de ML (Clase 3, slide 16):
+Cubre los pasos 2 (Recoleccion de datos) y 3 (Data Splitting) del pipeline
+clasico de un proyecto de ML (Clase 3, slide 16).
 
-    1. Definicion del problema
-    2. Recoleccion de datos        <- este modulo
-    3. Data Splitting              <- este modulo
-    4. Limpieza de datos
-    5. EDA
-    ...
-
-REGLA CENTRAL: aca NO se limpia, NO se imputa y NO se calcula ningun estadistico
-para transformar los datos. Lo unico que se hace es leer el archivo, verificar su
-integridad estructural y partirlo. Cualquier transformacion que dependa de un
-estadistico (media, mediana, IQR, escalado...) se ajusta mas adelante usando
-exclusivamente el train.
+Regla que respeta todo el modulo: aca NO se limpia, NO se imputa y NO se calcula
+ningun estadistico. Solo se lee el archivo, se verifica su estructura y se parte.
 
 Uso como script (regenera los splits en data/processed/):
     python -m src.data
@@ -32,21 +23,47 @@ from src.config import (
     TEST_SIZE,
 )
 
-# Esquema esperado del archivo crudo. Se valida en la carga para que, si el CSV
-# fuera reemplazado por otra version, el error aparezca aca y no cinco fases
-# despues disfrazado de un resultado raro.
+# Columnas y cantidad de filas que esperamos encontrar en el CSV.
+# Sirven para detectar si el archivo fue reemplazado por otra version.
 COLUMNAS_ESPERADAS = ["age", "sex", "bmi", "children", "smoker", "region", "charges"]
 FILAS_ESPERADAS = 1338
 
+# Rutas donde se guardan los conjuntos ya separados.
 TRAIN_PATH = PROCESSED_DIR / "train.csv"
 TEST_PATH = PROCESSED_DIR / "test.csv"
 
 
 def cargar_datos_crudos(verificar: bool = True) -> pd.DataFrame:
-    """Lee el dataset desde la ruta local fija y valida su estructura.
+    """Lee el dataset original desde disco y valida que sea el esperado.
 
-    No se descarga nada: la unica fuente es data/raw/insurance.csv. Ver la
-    seccion "Origen del dataset" del README.
+    Que hace
+    --------
+    1. Comprueba que exista el archivo data/raw/insurance.csv.
+    2. Lo lee con pandas.
+    3. Si verificar=True, controla que esten las 7 columnas esperadas y que
+       tenga 1338 filas, y reordena las columnas para que el orden sea estable.
+
+    Por que valida
+    --------------
+    Si alguien reemplazara el CSV por otra version del dataset, queremos que el
+    error aparezca aca y no varias fases despues disfrazado de un resultado raro.
+
+    Parametros
+    ----------
+    verificar : bool
+        Si es False, solo lee el archivo sin controlar su estructura.
+
+    Devuelve
+    --------
+    pd.DataFrame
+        El dataset completo, 1338 filas x 7 columnas.
+
+    Lanza
+    -----
+    FileNotFoundError
+        Si no existe data/raw/insurance.csv.
+    ValueError
+        Si faltan columnas o la cantidad de filas no es la esperada.
     """
     if not RAW_DATA_PATH.exists():
         raise FileNotFoundError(
@@ -65,7 +82,6 @@ def cargar_datos_crudos(verificar: bool = True) -> pd.DataFrame:
                 f"El CSV tiene {len(df)} filas y se esperaban {FILAS_ESPERADAS}. "
                 "Puede tratarse de otra version del dataset."
             )
-        # Reordena a las columnas esperadas para que el orden sea estable.
         df = df[COLUMNAS_ESPERADAS]
 
     return df
@@ -76,16 +92,33 @@ def separar_train_test(
     test_size: float = TEST_SIZE,
     random_state: int = RANDOM_SEED,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Separa el dataset en train y test mediante muestreo aleatorio simple.
+    """Separa el dataset en train y test por muestreo aleatorio simple.
 
-    Criterio (Clase 3, slide 30): "crear el conjunto de test y separar esos datos
-    para no volverlos a usar hasta el final del proyecto. Tipicamente seleccionar
-    aleatoriamente 20% de los datos".
+    Que hace
+    --------
+    Mezcla las filas y aparta el 20% para test, usando una semilla fija para que
+    el sorteo sea siempre el mismo. Conserva el indice original del CSV, lo que
+    permite auditar despues si alguna fila cambio de conjunto.
 
-    Se hace inmediatamente despues de la carga, antes de cualquier limpieza, para
-    evitar data leakage: si se imputaran valores o se quitaran outliers usando el
-    dataset completo, informacion que luego va al test estaria influyendo en el
-    train (Clase 2, slides 93-96).
+    Por que se hace aca y no despues de limpiar
+    -------------------------------------------
+    Es el paso 3 del pipeline. Si limpiaramos antes, los estadisticos usados
+    (medianas, IQR) incluirian informacion de las filas que van al test, y el
+    error de test dejaria de ser una estimacion honesta (Clase 2, slides 93-96).
+
+    Parametros
+    ----------
+    df : pd.DataFrame
+        Dataset completo, tal como sale de cargar_datos_crudos().
+    test_size : float
+        Fraccion destinada a test. Por defecto 0.20 (Clase 3, slide 30).
+    random_state : int
+        Semilla del sorteo. Fija para que el resultado sea reproducible.
+
+    Devuelve
+    --------
+    tuple[pd.DataFrame, pd.DataFrame]
+        (train, test), de 1070 y 268 filas respectivamente.
     """
     train, test = train_test_split(
         df,
@@ -93,31 +126,50 @@ def separar_train_test(
         random_state=random_state,
         shuffle=True,
     )
-
-    # Se conserva el indice original del CSV: permite auditar despues que ninguna
-    # fila haya pasado de un conjunto al otro.
     return train, test
 
 
 def verificar_split(train: pd.DataFrame, test: pd.DataFrame) -> dict:
-    """Controles de integridad del split. Devuelve un resumen y falla si algo no cierra.
+    """Audita que la separacion train/test sea correcta.
 
-    El control importante es el tercero: dos filas identicas repartidas entre train
-    y test serian una forma silenciosa de leakage (el modelo habria visto en
-    entrenamiento un dato exactamente igual al que se le evalua).
+    Que controla
+    ------------
+    1. Que la suma de filas de ambos conjuntos sea la del dataset original
+       (no se perdio ni se duplico nada).
+    2. Que ninguna fila este en los dos conjuntos a la vez (indices disjuntos).
+    3. Cuantas filas del test son identicas a alguna fila del train. Este es el
+       control importante: dos filas iguales repartidas entre train y test
+       significan que el modelo se evalua sobre un dato que ya vio al entrenar.
+
+    Parametros
+    ----------
+    train, test : pd.DataFrame
+        Los conjuntos devueltos por separar_train_test().
+
+    Devuelve
+    --------
+    dict
+        Resumen con: n_train, n_test, prop_test, solapamiento_indices,
+        filas_identicas_compartidas, media_target_train y media_target_test.
+
+    Lanza
+    -----
+    ValueError
+        Si se perdieron filas o si hay indices repetidos entre conjuntos.
     """
     n_total = len(train) + len(test)
 
-    # 1) No se perdio ni se duplico ninguna fila.
+    # Control 1: no se perdio ni se duplico ninguna fila.
     if n_total != FILAS_ESPERADAS:
         raise ValueError(f"train + test = {n_total}, se esperaban {FILAS_ESPERADAS}.")
 
-    # 2) Los conjuntos son disjuntos por indice.
+    # Control 2: los conjuntos son disjuntos por indice.
     solapamiento = set(train.index) & set(test.index)
     if solapamiento:
         raise ValueError(f"Hay {len(solapamiento)} filas en train y test a la vez.")
 
-    # 3) Ninguna fila duplicada quedo repartida entre ambos conjuntos.
+    # Control 3: se convierte cada fila en una tupla para poder compararlas como
+    # conjuntos y contar cuantas aparecen en ambos lados.
     claves_train = set(map(tuple, train[COLUMNAS_ESPERADAS].to_numpy().tolist()))
     claves_test = set(map(tuple, test[COLUMNAS_ESPERADAS].to_numpy().tolist()))
     filas_compartidas = claves_train & claves_test
@@ -134,10 +186,15 @@ def verificar_split(train: pd.DataFrame, test: pd.DataFrame) -> dict:
 
 
 def guardar_splits(train: pd.DataFrame, test: pd.DataFrame) -> None:
-    """Persiste train y test en data/processed/.
+    """Guarda train y test como CSV en data/processed/.
 
-    Se guarda el indice original (index=True) para poder rastrear cada fila
-    hasta el CSV crudo.
+    Conserva el indice original del dataset en una columna llamada
+    'idx_original', para poder rastrear cada fila hasta el archivo crudo.
+
+    Parametros
+    ----------
+    train, test : pd.DataFrame
+        Los conjuntos a persistir.
     """
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     train.to_csv(TRAIN_PATH, index=True, index_label="idx_original")
@@ -145,10 +202,21 @@ def guardar_splits(train: pd.DataFrame, test: pd.DataFrame) -> None:
 
 
 def cargar_splits() -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Lee los splits ya generados. Es la puerta de entrada de las fases 2 en adelante.
+    """Lee los splits ya generados desde data/processed/.
 
-    A partir de aca ningun notebook vuelve a abrir el CSV crudo: asi es imposible
-    recalcular por error un estadistico sobre el dataset completo.
+    Es la puerta de entrada de todas las fases posteriores a la 1: a partir de
+    ahi ningun notebook vuelve a abrir el CSV crudo, para que sea imposible
+    calcular por error un estadistico sobre el dataset completo.
+
+    Devuelve
+    --------
+    tuple[pd.DataFrame, pd.DataFrame]
+        (train, test), con el indice original restaurado.
+
+    Lanza
+    -----
+    FileNotFoundError
+        Si los splits todavia no fueron generados.
     """
     if not TRAIN_PATH.exists() or not TEST_PATH.exists():
         raise FileNotFoundError(
@@ -160,6 +228,11 @@ def cargar_splits() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def main() -> None:
+    """Ejecuta el proceso completo e imprime un resumen por consola.
+
+    Carga el CSV, separa train/test, audita el resultado y guarda ambos
+    conjuntos en data/processed/.
+    """
     df = cargar_datos_crudos()
     train, test = separar_train_test(df)
     resumen = verificar_split(train, test)
