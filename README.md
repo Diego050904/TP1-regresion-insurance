@@ -152,6 +152,11 @@ python -m src.data
 | 1 | Proporción train/test | 80 / 20 → 1070 / 268 filas | Clase 3 slide 30; el dev fijo del 60-20-20 se reemplaza por k-fold sobre train (Clase 2 slide 85) |
 | 1 | Semilla | 42, en `src/config.py` | Reproducibilidad del resultado en la defensa |
 | 1 | Duplicados | Detectados y documentados | Su tratamiento corresponde al paso 4 del pipeline (Fase 2) |
+| 2 | Valores faltantes | Ninguno (0 en las 7 columnas) | No hay nada que imputar ni eliminar; se documenta el análisis (consigna 1.2) |
+| 2 | Duplicados en train | 0 | La copia gemela quedó en test; nada que eliminar de este lado |
+| 2 | Outliers de `charges` | **Se mantienen** (111 por IQR, 10.4%) | El 97.3% son fumadores: no son errores sino la señal principal. Eliminarlos borraría el 49% de los fumadores del train |
+| 2 | Outliers de `bmi` y `children` | Se mantienen | Valores fisiológicamente plausibles, sin efecto sobre el costo medio |
+| 2 | Robustez frente a extremos | Vía regularización L1 (Fase 5) | Estrategia 3 de la Clase 2 slide 42: modelos más robustos, en lugar de eliminar datos |
 
 ---
 
@@ -168,12 +173,13 @@ python -m src.data
   - [x] Justificación de la proporción (80/20) y de la estratificación (por `smoker`)
   - [x] Auditoría del split: sin solapamiento de índices ni filas idénticas compartidas
   - [x] Splits persistidos en `data/processed/`
-- [ ] **Fase 2 — Análisis exploratorio (sólo sobre train)** *(consignas 1.2, 1.3)*
-  - [ ] Tipos de variables
-  - [ ] Valores faltantes: análisis y estrategia
-  - [ ] Duplicados
-  - [ ] Outliers: detección visual (boxplot, histograma, scatter) y estadística (IQR, z-score)
-  - [ ] Decisión justificada sobre qué hacer con los outliers
+- [x] **Fase 2 — Limpieza de datos y EDA (sólo sobre train)** *(consignas 1.2, 1.3)*
+  - [x] Valores faltantes: análisis y estrategia
+  - [x] Duplicados dentro del train
+  - [x] Inconsistencias y rangos válidos
+  - [x] Outliers: detección visual (histograma, boxplot, scatter) y estadística (IQR, z-score)
+  - [x] Decisión justificada sobre qué hacer con los outliers
+  - [x] EDA: distribuciones, relación con el target y correlación entre features
 - [ ] **Fase 3 — Preprocesamiento y features** *(consignas 1.1, 1.4)*
   - [ ] Encoding de categóricas, con justificación por variable
   - [ ] Imputación (si corresponde), con estadísticos del train
