@@ -19,7 +19,6 @@ from src.config import (
     PROCESSED_DIR,
     RANDOM_SEED,
     RAW_DATA_PATH,
-    TARGET,
     TEST_SIZE,
 )
 
@@ -183,6 +182,21 @@ def verificar_split(
        significan que el modelo se evalua sobre un dato que ya vio al entrenar.
        Tras eliminar los duplicados antes del split, este valor debe ser 0.
 
+    Por que la auditoria NO reporta estadisticos del target
+    ------------------------------------------------------
+    Los tres controles son puramente estructurales: cuentan filas y detectan
+    solapamientos. Ninguno calcula la media, el desvio ni la distribucion de
+    charges en el test.
+
+    Es deliberado. La Clase 2 (slide 89) establece que el test "solamente se
+    utiliza para estimar el error de prediccion en datos nuevos, nunca para tomar
+    decisiones". Mirar el target del test antes de la evaluacion final no aporta
+    ninguna accion posible, y en cambio abre la puerta a repetir el sorteo hasta
+    obtener una particion favorable, que si seria adulterar el resultado.
+
+    La representatividad de la particion se verifica sobre las variables de
+    entrada, que es donde la pregunta tiene sentido (ver notebook 01).
+
     Parametros
     ----------
     train, test : pd.DataFrame
@@ -194,8 +208,8 @@ def verificar_split(
     Devuelve
     --------
     dict
-        Resumen con: n_train, n_test, prop_test, solapamiento_indices,
-        filas_identicas_compartidas, media_target_train y media_target_test.
+        Resumen con: n_train, n_test, prop_test, solapamiento_indices y
+        filas_identicas_compartidas.
 
     Lanza
     -----
@@ -225,8 +239,6 @@ def verificar_split(
         "prop_test": len(test) / n_total,
         "solapamiento_indices": len(solapamiento),
         "filas_identicas_compartidas": len(filas_compartidas),
-        "media_target_train": train[TARGET].mean(),
-        "media_target_test": test[TARGET].mean(),
     }
 
 
@@ -296,9 +308,6 @@ def main() -> None:
           f"({1 - resumen['prop_test']:.1%})")
     print(f"Test               : {resumen['n_test']:5d} filas "
           f"({resumen['prop_test']:.1%})")
-    print("-" * 58)
-    print(f"Media charges train: {resumen['media_target_train']:10,.2f}")
-    print(f"Media charges test : {resumen['media_target_test']:10,.2f}")
     print("-" * 58)
     print(f"Indices solapados        : {resumen['solapamiento_indices']}")
     print(f"Filas identicas en ambos : {resumen['filas_identicas_compartidas']}")

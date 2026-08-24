@@ -153,6 +153,7 @@ python -m src.data
 | 1 | Método de separación | Muestreo aleatorio simple | Clase 3, slide 30 |
 | 1 | Proporción train/test | 80 / 20 → 1069 / 268 filas | Clase 3 slide 30; el dev fijo del 60-20-20 se reemplaza por k-fold sobre train (Clase 2 slide 85) |
 | 1 | Semilla | 42, en `src/config.py` | Reproducibilidad del resultado en la defensa |
+| 1 | Qué se observa del test | Sólo las variables de entrada | La auditoría del split es estructural; el target del test no se mira hasta la Fase 6 (Clase 2, slide 89) |
 | 1 | Duplicados exactos | **Eliminados antes del split** (1 fila) | Si no, una copia caía en train y otra en test, y el test dejaba de ser datos nuevos. Es integridad de la recolección, no limpieza estadística |
 | 2 | Valores faltantes | Ninguno (0 en las 7 columnas) | No hay nada que imputar ni eliminar; se documenta el análisis (consigna 1.2) |
 | 2 | Duplicados en train | 0 | Ya eliminados en la Fase 1; el control lo confirma |
