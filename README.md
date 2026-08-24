@@ -102,10 +102,12 @@ TP1-regresion-insurance/
 │   │   └── insurance.csv        # Fuente de verdad. Versionado en git.
 │   └── processed/               # Splits generados (regenerables, no versionados)
 ├── notebooks/
-│   └── 01_carga_y_split.ipynb   # Fase 1: carga y separación train/test
+│   ├── 01_carga_y_split.ipynb   # Fase 1: carga y separación train/test
+│   └── 02_limpieza_y_eda.ipynb  # Fase 2: limpieza y análisis exploratorio
 ├── src/
 │   ├── config.py                # Rutas, semilla y esquema de partición
-│   └── data.py                  # Carga, split, auditoría y persistencia
+│   ├── data.py                  # Carga, deduplicación, split y persistencia
+│   └── exploracion.py           # Faltantes y detección de outliers (IQR, z-score)
 ├── reports/
 │   └── figures/                 # Gráficos para la presentación
 ├── requirements.txt
@@ -149,13 +151,14 @@ python -m src.data
 |---|---|---|---|
 | 1 | Momento del split | Inmediatamente tras la carga | Paso 3 del pipeline (Clase 3, slide 16); evitar data leakage (Clase 2, slides 93–96) |
 | 1 | Método de separación | Muestreo aleatorio simple | Clase 3, slide 30 |
-| 1 | Proporción train/test | 80 / 20 → 1070 / 268 filas | Clase 3 slide 30; el dev fijo del 60-20-20 se reemplaza por k-fold sobre train (Clase 2 slide 85) |
+| 1 | Proporción train/test | 80 / 20 → 1069 / 268 filas | Clase 3 slide 30; el dev fijo del 60-20-20 se reemplaza por k-fold sobre train (Clase 2 slide 85) |
 | 1 | Semilla | 42, en `src/config.py` | Reproducibilidad del resultado en la defensa |
-| 1 | Duplicados | Detectados y documentados | Su tratamiento corresponde al paso 4 del pipeline (Fase 2) |
+| 1 | Duplicados exactos | **Eliminados antes del split** (1 fila) | Si no, una copia caía en train y otra en test, y el test dejaba de ser datos nuevos. Es integridad de la recolección, no limpieza estadística |
 | 2 | Valores faltantes | Ninguno (0 en las 7 columnas) | No hay nada que imputar ni eliminar; se documenta el análisis (consigna 1.2) |
-| 2 | Duplicados en train | 0 | La copia gemela quedó en test; nada que eliminar de este lado |
-| 2 | Outliers de `charges` | **Se mantienen** (111 por IQR, 10.4%) | El 97.3% son fumadores: no son errores sino la señal principal. Eliminarlos borraría el 49% de los fumadores del train |
+| 2 | Duplicados en train | 0 | Ya eliminados en la Fase 1; el control lo confirma |
+| 2 | Outliers de `charges` | **Se mantienen** (106 por IQR, 9.9%) | El 97.2% son fumadores: no son errores sino la señal principal. Eliminarlos borraría el 48% de los fumadores del train |
 | 2 | Outliers de `bmi` y `children` | Se mantienen | Valores fisiológicamente plausibles, sin efecto sobre el costo medio |
+| 2 | Rango de validez del modelo | Documentado: `age` 18–64, `bmi` 15.96–53.13 | Predecir fuera de ese rango es extrapolación; se retoma en la Fase 6 |
 | 2 | Robustez frente a extremos | Vía regularización L1 (Fase 5) | Estrategia 3 de la Clase 2 slide 42: modelos más robustos, en lugar de eliminar datos |
 
 ---

@@ -87,6 +87,43 @@ def cargar_datos_crudos(verificar: bool = True) -> pd.DataFrame:
     return df
 
 
+def eliminar_duplicados(df: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    """Elimina las filas exactamente duplicadas, conservando la primera aparicion.
+
+    Que hace
+    --------
+    Busca filas identicas en las 7 columnas y deja una sola copia de cada una.
+
+    Por que se hace ANTES del split, y por que eso no contradice la regla de
+    "separar antes de limpiar"
+    -----------------------------------------------------------------------
+    Una fila exactamente repetida es un defecto de la recoleccion de datos (el
+    mismo registro cargado dos veces), no un valor que haya que estimar. Al
+    eliminarla no se calcula ningun estadistico, asi que no viaja informacion del
+    test hacia el train: pertenece al paso 2 del pipeline (Recoleccion), no al
+    paso 4 (Limpieza).
+
+    Si en cambio se dejara para despues del split, las dos copias pueden quedar
+    repartidas una en train y otra en test. En ese caso el test contendria un
+    registro que el modelo ya vio al entrenar y dejaria de ser un conjunto de
+    datos verdaderamente nuevos, que es justamente lo que la separacion busca
+    garantizar.
+
+    Parametros
+    ----------
+    df : pd.DataFrame
+        Dataset tal como sale de cargar_datos_crudos().
+
+    Devuelve
+    --------
+    tuple[pd.DataFrame, int]
+        (dataset sin duplicados, cantidad de filas eliminadas).
+    """
+    n_antes = len(df)
+    df_sin_duplicados = df.drop_duplicates(keep="first")
+    return df_sin_duplicados, n_antes - len(df_sin_duplicados)
+
+
 def separar_train_test(
     df: pd.DataFrame,
     test_size: float = TEST_SIZE,
@@ -129,22 +166,30 @@ def separar_train_test(
     return train, test
 
 
-def verificar_split(train: pd.DataFrame, test: pd.DataFrame) -> dict:
+def verificar_split(
+    train: pd.DataFrame,
+    test: pd.DataFrame,
+    n_esperado: int | None = None,
+) -> dict:
     """Audita que la separacion train/test sea correcta.
 
     Que controla
     ------------
-    1. Que la suma de filas de ambos conjuntos sea la del dataset original
-       (no se perdio ni se duplico nada).
+    1. Que la suma de filas de ambos conjuntos sea la esperada (no se perdio ni
+       se duplico nada).
     2. Que ninguna fila este en los dos conjuntos a la vez (indices disjuntos).
     3. Cuantas filas del test son identicas a alguna fila del train. Este es el
        control importante: dos filas iguales repartidas entre train y test
        significan que el modelo se evalua sobre un dato que ya vio al entrenar.
+       Tras eliminar los duplicados antes del split, este valor debe ser 0.
 
     Parametros
     ----------
     train, test : pd.DataFrame
         Los conjuntos devueltos por separar_train_test().
+    n_esperado : int | None
+        Cantidad total de filas que deberian sumar ambos conjuntos. Si es None,
+        se omite ese control.
 
     Devuelve
     --------
@@ -160,8 +205,8 @@ def verificar_split(train: pd.DataFrame, test: pd.DataFrame) -> dict:
     n_total = len(train) + len(test)
 
     # Control 1: no se perdio ni se duplico ninguna fila.
-    if n_total != FILAS_ESPERADAS:
-        raise ValueError(f"train + test = {n_total}, se esperaban {FILAS_ESPERADAS}.")
+    if n_esperado is not None and n_total != n_esperado:
+        raise ValueError(f"train + test = {n_total}, se esperaban {n_esperado}.")
 
     # Control 2: los conjuntos son disjuntos por indice.
     solapamiento = set(train.index) & set(test.index)
@@ -230,15 +275,20 @@ def cargar_splits() -> tuple[pd.DataFrame, pd.DataFrame]:
 def main() -> None:
     """Ejecuta el proceso completo e imprime un resumen por consola.
 
-    Carga el CSV, separa train/test, audita el resultado y guarda ambos
-    conjuntos en data/processed/.
+    Carga el CSV, elimina duplicados exactos, separa train/test, audita el
+    resultado y guarda ambos conjuntos en data/processed/.
     """
     df = cargar_datos_crudos()
+    n_crudo = len(df)
+
+    df, n_duplicados = eliminar_duplicados(df)
+
     train, test = separar_train_test(df)
-    resumen = verificar_split(train, test)
+    resumen = verificar_split(train, test, n_esperado=len(df))
     guardar_splits(train, test)
 
-    print(f"Dataset crudo      : {df.shape[0]} filas x {df.shape[1]} columnas")
+    print(f"Dataset crudo      : {n_crudo} filas x {df.shape[1]} columnas")
+    print(f"Duplicados exactos : {n_duplicados} eliminados -> {len(df)} filas")
     print(f"Semilla            : {RANDOM_SEED}")
     print(f"Metodo             : muestreo aleatorio simple")
     print("-" * 58)
