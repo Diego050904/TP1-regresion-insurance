@@ -104,12 +104,14 @@ TP1-regresion-insurance/
 ├── notebooks/
 │   ├── 01_carga_y_split.ipynb   # Fase 1: carga y separación train/test
 │   ├── 02_limpieza_y_eda.ipynb  # Fase 2: limpieza y análisis exploratorio
-│   └── 03_preprocesamiento_y_features.ipynb   # Fase 3: encoding, escalado, features
+│   ├── 03_preprocesamiento_y_features.ipynb   # Fase 3: encoding, escalado, features
+│   └── 04_regresion_lineal.ipynb              # Fase 4: k-fold y regresión lineal
 ├── src/
 │   ├── config.py                # Rutas, semilla y esquema de partición
 │   ├── data.py                  # Carga, deduplicación, split y persistencia
 │   ├── exploracion.py           # Faltantes y detección de outliers (IQR, z-score)
-│   └── preprocesamiento.py      # ColumnTransformer: one-hot + escalado z-score
+│   ├── preprocesamiento.py      # ColumnTransformer: one-hot + escalado z-score
+│   └── modelado.py              # k-fold, modelos y evaluación con RMSE
 ├── reports/
 │   └── figures/                 # Gráficos para la presentación
 ├── requirements.txt
@@ -186,6 +188,9 @@ Entrega: 25/08/2026 (24 h antes de la defensa).
 | 3 | Ordinal / frequency / target encoding | Descartados | Sin jerarquía; las 4 regiones tienen frecuencias casi iguales (0.2367–0.2685); target encoding arriesga leakage sin resolver ningún problema de cardinalidad |
 | 3 | Escalado | **z-score (`StandardScaler`)** sobre las numéricas | Clase 3 slide 43; imprescindible para que L1 penalice de forma pareja |
 | 3 | Features incluidas | **Las 6** (todas) | Ninguna irrelevante ni redundante; sin problema de dimensionalidad |
+| 4 | Esquema de validación | **k-fold con k = 5**, sólo sobre el train | Clase 2 slide 85; usa los datos de forma más eficiente que un dev fijo |
+| 4 | Preprocesamiento dentro del `Pipeline` | Sí | `cross_validate` lo reajusta en cada fold; evita que los folds de validación contaminen la media y el desvío |
+| 4 | Resultado regresión lineal | RMSE val **6.123,65** · train 6.075,92 · R² 0.72 | Gap de 47,73 (0.8%): sin overfitting |
 
 ---
 
@@ -215,10 +220,10 @@ Entrega: 25/08/2026 (24 h antes de la defensa).
   - [x] Escalado por z-score (`StandardScaler`), ajustado sólo con train
   - [x] Filtros de selección: correlación de Pearson e información mutua
   - [x] Todo encapsulado en un `ColumnTransformer` ajustado sólo con train
-- [ ] **Fase 4 — Regresión lineal** *(consignas 2.2, 2.3)*
-  - [ ] k-fold cross-validation sobre el train
-  - [ ] Entrenamiento dentro del CV
-  - [ ] RMSE de train y de validación
+- [x] **Fase 4 — Regresión lineal** *(consignas 2.2, 2.3)*
+  - [x] k-fold cross-validation sobre el train (k = 5)
+  - [x] Entrenamiento dentro del CV
+  - [x] RMSE de train y de validación
 - [ ] **Fase 5 — Regresión polinómica, selección y regularización** *(consignas 3.1, 3.2, 3.3, 4)*
   - [ ] Transformación polinómica para varios grados
   - [ ] Entrenamiento sobre las variables transformadas
