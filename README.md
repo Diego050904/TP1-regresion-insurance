@@ -103,11 +103,13 @@ TP1-regresion-insurance/
 │   └── processed/               # Splits generados (regenerables, no versionados)
 ├── notebooks/
 │   ├── 01_carga_y_split.ipynb   # Fase 1: carga y separación train/test
-│   └── 02_limpieza_y_eda.ipynb  # Fase 2: limpieza y análisis exploratorio
+│   ├── 02_limpieza_y_eda.ipynb  # Fase 2: limpieza y análisis exploratorio
+│   └── 03_preprocesamiento_y_features.ipynb   # Fase 3: encoding, escalado, features
 ├── src/
 │   ├── config.py                # Rutas, semilla y esquema de partición
 │   ├── data.py                  # Carga, deduplicación, split y persistencia
-│   └── exploracion.py           # Faltantes y detección de outliers (IQR, z-score)
+│   ├── exploracion.py           # Faltantes y detección de outliers (IQR, z-score)
+│   └── preprocesamiento.py      # ColumnTransformer: one-hot + escalado z-score
 ├── reports/
 │   └── figures/                 # Gráficos para la presentación
 ├── requirements.txt
@@ -180,6 +182,11 @@ Entrega: 25/08/2026 (24 h antes de la defensa).
 | 2 | Outliers de `bmi` y `children` | Se mantienen | Valores fisiológicamente plausibles, sin efecto sobre el costo medio |
 | 2 | Rango de validez del modelo | Documentado: `age` 18–64, `bmi` 15.96–53.13 | Predecir fuera de ese rango es extrapolación; se retoma en la Fase 6 |
 | 2 | Robustez frente a extremos | Vía regularización L1 (Fase 5) | Estrategia 3 de la Clase 2 slide 42: modelos más robustos, en lugar de eliminar datos |
+| 3 | Encoding de las 3 categóricas | **One-hot con `drop="first"`** | Son nominales; sin leakage; 6 variables → 8 columnas |
+| 3 | Ordinal / frequency / target encoding | Descartados | Sin jerarquía; las 4 regiones tienen frecuencias casi iguales (0.2367–0.2685); target encoding arriesga leakage sin resolver ningún problema de cardinalidad |
+| 3 | Escalado | **z-score (`StandardScaler`)** sobre las numéricas | Clase 3 slide 43; imprescindible para que L1 penalice de forma pareja |
+| 3 | Features incluidas | **Las 6** (todas) | Ninguna irrelevante ni redundante; sin problema de dimensionalidad |
+| 3 | Transformación log del target | No aplicada | El RMSE dejaría de estar en dólares y de ser comparable entre modelos |
 
 ---
 
@@ -203,12 +210,12 @@ Entrega: 25/08/2026 (24 h antes de la defensa).
   - [x] Outliers: detección visual (histograma, boxplot, scatter) y estadística (IQR, z-score)
   - [x] Decisión justificada sobre qué hacer con los outliers
   - [x] EDA: distribuciones, relación con el target y correlación entre features
-- [ ] **Fase 3 — Preprocesamiento y features** *(consignas 1.1, 1.4)*
-  - [ ] Encoding de categóricas, con justificación por variable
-  - [ ] Imputación (si corresponde), con estadísticos del train
-  - [ ] Escalado por z-score (`StandardScaler`), ajustado sólo con train
-  - [ ] Filtros de selección: correlación de Pearson e información mutua
-  - [ ] Todo encapsulado en un `Pipeline` ajustado sólo con train
+- [x] **Fase 3 — Preprocesamiento y features** *(consignas 1.1, 1.4)*
+  - [x] Encoding de categóricas, con justificación por variable
+  - [x] Imputación: no aplica (no hay faltantes)
+  - [x] Escalado por z-score (`StandardScaler`), ajustado sólo con train
+  - [x] Filtros de selección: correlación de Pearson e información mutua
+  - [x] Todo encapsulado en un `ColumnTransformer` ajustado sólo con train
 - [ ] **Fase 4 — Regresión lineal** *(consignas 2.2, 2.3)*
   - [ ] k-fold cross-validation sobre el train
   - [ ] Entrenamiento dentro del CV
