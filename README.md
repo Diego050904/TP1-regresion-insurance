@@ -186,7 +186,6 @@ Entrega: 25/08/2026 (24 h antes de la defensa).
 | 3 | Ordinal / frequency / target encoding | Descartados | Sin jerarquía; las 4 regiones tienen frecuencias casi iguales (0.2367–0.2685); target encoding arriesga leakage sin resolver ningún problema de cardinalidad |
 | 3 | Escalado | **z-score (`StandardScaler`)** sobre las numéricas | Clase 3 slide 43; imprescindible para que L1 penalice de forma pareja |
 | 3 | Features incluidas | **Las 6** (todas) | Ninguna irrelevante ni redundante; sin problema de dimensionalidad |
-| 3 | Transformación log del target | No aplicada | El RMSE dejaría de estar en dólares y de ser comparable entre modelos |
 
 ---
 
