@@ -145,6 +145,25 @@ python -m src.data
 
 ---
 
+## Entrega
+
+Formato confirmado con la cátedra:
+
+- **El código se entrega como este repositorio de GitHub** (alternativa aceptada: los
+  notebooks sueltos). La cátedra no va a ejecutarlo.
+- Lo que debe quedar visible es **el código con el que se entrenaron los modelos y se
+  eligieron los hiperparámetros**, no sólo el que produce los gráficos finales. Por eso las
+  Fases 4 y 5 conservan la búsqueda completa —todos los grados de polinomio y todos los
+  valores de lambda evaluados— en una tabla de resultados, y no únicamente el modelo ganador.
+- **Semilla fija en el split train/test**: confirmado como criterio correcto. Para la
+  validación, la cátedra señala que sería válido usar semillas aleatorias y repetir el
+  k-fold con folds distintos en cada iteración (*repeated k-fold*), como variación del
+  esquema visto en clase.
+
+Entrega: 25/08/2026 (24 h antes de la defensa).
+
+---
+
 ## Decisiones tomadas
 
 | Fase | Decisión | Valor | Justificación breve |
