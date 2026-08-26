@@ -1,26 +1,13 @@
-"""Entrenamiento y evaluacion de modelos con validacion cruzada.
+"""Modelos y evaluacion con validacion cruzada (pasos 7 y 9 del pipeline).
 
-Cubre los pasos 7 (Modelado) y 9 (Evaluacion en Dev) del pipeline clasico
-(Clase 3, slide 16), y las consignas 2.2, 2.3 y 4 del enunciado.
+Ninguna funcion de este modulo recibe el conjunto de test.
 
-Regla que respeta todo el modulo: la validacion cruzada se hace UNICAMENTE sobre
-el train. Ninguna funcion de aca recibe el conjunto de test.
-
-Por que los modelos se arman como Pipeline
-------------------------------------------
-Un `Pipeline` encadena el preprocesamiento y el modelo en un solo objeto. Cuando
-`cross_validate` lo evalua, reajusta la cadena completa dentro de cada fold: el
-escalado aprende la media y el desvio del sub-conjunto de entrenamiento de ese
-fold, no de todo el train.
-
-Si en cambio se transformaran los datos una sola vez antes del k-fold, cada fold
-de validacion habria participado en el calculo de esos estadisticos y el error de
-validacion saldria optimista.
+Los modelos se arman como Pipeline para que cross_validate reajuste el
+preprocesamiento dentro de cada fold, y no una sola vez sobre todo el train.
 """
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 from sklearn.linear_model import Lasso, LinearRegression
 from sklearn.model_selection import KFold, RepeatedKFold, cross_validate
@@ -32,32 +19,7 @@ from src.preprocesamiento import construir_preprocesador
 
 
 def crear_kfold(n_splits: int = N_SPLITS, semilla: int = RANDOM_SEED) -> KFold:
-    """Crea el esquema de validacion cruzada que usan todas las fases.
-
-    Que hace
-    --------
-    Divide el train en `n_splits` partes iguales. En cada iteracion una parte se
-    usa para validar y el resto para entrenar, de modo que cada observacion se
-    valida exactamente una vez.
-
-    Por que k = 5
-    -------------
-    La Clase 2 (slide 85) indica que "k = 5 o 10 son las mas usadas y son
-    suficientes". Con 1069 filas, k=5 deja unas 214 observaciones por fold de
-    validacion, cantidad razonable para estimar el error.
-
-    Parametros
-    ----------
-    n_splits : int
-        Cantidad de folds.
-    semilla : int
-        Fija el reparto de filas entre folds, para que el resultado sea reproducible.
-
-    Devuelve
-    --------
-    KFold
-        Con shuffle activado: las filas se mezclan antes de repartirse.
-    """
+    """KFold con shuffle y semilla fija. k=5 segun la Clase 2."""
     return KFold(n_splits=n_splits, shuffle=True, random_state=semilla)
 
 
@@ -66,57 +28,13 @@ def crear_repeated_kfold(
     n_repeats: int = 10,
     semilla: int = RANDOM_SEED,
 ) -> RepeatedKFold:
-    """Crea un k-fold repetido: el mismo esquema, pero con varios repartos distintos.
-
-    Que hace
-    --------
-    Corre el k-fold `n_repeats` veces, y en cada repeticion mezcla las filas de
-    otra forma antes de armar los folds. Con n_splits=5 y n_repeats=10 cada modelo
-    se evalua sobre 50 particiones en lugar de 5.
-
-    Para que sirve
-    --------------
-    El RMSE de validacion de un k-fold depende de como cayeron las filas en cada
-    fold. Cuando dos modelos difieren en poco, esa diferencia puede deberse al
-    reparto y no al modelo. Promediar sobre muchos repartos hace que la
-    comparacion no dependa de una unica semilla.
-
-    Es la variacion que sugiere la catedra: usar semillas distintas para la
-    validacion (no para el split train/test, donde la semilla fija es lo correcto).
-
-    Parametros
-    ----------
-    n_splits : int
-        Folds por repeticion.
-    n_repeats : int
-        Cuantas veces se repite el k-fold con repartos distintos.
-    semilla : int
-        Semilla base. Fija la secuencia de repartos, de modo que el resultado
-        sigue siendo reproducible.
-
-    Devuelve
-    --------
-    RepeatedKFold
-    """
+    """Repite el k-fold con repartos distintos, para que la comparacion entre
+    modelos no dependa de una unica semilla de validacion."""
     return RepeatedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=semilla)
 
 
 def crear_modelo_lineal() -> Pipeline:
-    """Arma el modelo de regresion lineal completo: preprocesamiento + regresion.
-
-    Que hace
-    --------
-    Devuelve un Pipeline de dos pasos:
-      1. `preprocesamiento`: one-hot para las categoricas y z-score para las
-         numericas (ver src/preprocesamiento.py).
-      2. `regresion`: LinearRegression, que ajusta los coeficientes minimizando
-         la suma de los errores al cuadrado.
-
-    Devuelve
-    --------
-    Pipeline
-        Sin entrenar. Se entrena con .fit() o dentro de cross_validate().
-    """
+    """Pipeline de dos pasos: preprocesamiento + LinearRegression."""
     return Pipeline([
         ("preprocesamiento", construir_preprocesador()),
         ("regresion", LinearRegression()),
@@ -128,46 +46,11 @@ def crear_modelo_polinomico(
     alpha: float | None = None,
     max_iter: int = 1_000_000,
 ) -> Pipeline:
-    """Arma un modelo de regresion polinomica, con o sin regularizacion L1.
+    """Pipeline de cuatro pasos: preprocesamiento, expansion polinomica, reescalado y regresion.
 
-    Que hace
-    --------
-    Devuelve un Pipeline de cuatro pasos:
-      1. `preprocesamiento`: one-hot + z-score (igual que el modelo lineal).
-      2. `polinomica`: PolynomialFeatures genera todas las potencias hasta `grado`
-         y todos los productos cruzados entre variables.
-      3. `reescalado`: StandardScaler sobre las columnas nuevas.
-      4. `regresion`: LinearRegression si alpha es None, o Lasso si se pasa alpha.
-
-    Por que se vuelve a escalar despues de la expansion polinomica
-    -------------------------------------------------------------
-    PolynomialFeatures crea columnas nuevas (cuadrados y productos) cuyas escalas
-    no tienen nada que ver con las de las originales: el cuadrado de una variable
-    estandarizada ya no tiene media 0 ni desvio 1. Sin reescalar, la penalizacion
-    L1 castigaria a esas columnas por su magnitud y no por su utilidad, que es el
-    mismo argumento de la Fase 3.
-
-    Sobre el nombre del parametro de regularizacion
-    -----------------------------------------------
-    En las clases el parametro se llama lambda. En scikit-learn se llama `alpha`
-    y es exactamente lo mismo: la fuerza de la penalizacion. Cuanto mas alto, mas
-    se fuerza a los coeficientes hacia cero.
-
-    Parametros
-    ----------
-    grado : int
-        Grado maximo del polinomio. Con grado=1 el resultado es equivalente al
-        modelo lineal de la Fase 4.
-    alpha : float | None
-        Fuerza de la regularizacion L1 (el lambda de la clase). None = sin regularizar.
-    max_iter : int
-        Iteraciones maximas del optimizador de Lasso. Se fija alto porque con
-        muchas features y alphas chicos la convergencia es lenta.
-
-    Devuelve
-    --------
-    Pipeline
-        Sin entrenar.
+    Con alpha=None usa minimos cuadrados; con un valor, Lasso (el alpha de
+    scikit-learn es el lambda de la clase). Se reescala despues de la expansion
+    porque los cuadrados y productos tienen escalas nuevas.
     """
     pasos = [
         ("preprocesamiento", construir_preprocesador()),
@@ -185,27 +68,9 @@ def crear_modelo_polinomico(
 
 
 def contar_features(modelo: Pipeline, X: pd.DataFrame) -> tuple[int, int]:
-    """Cuenta cuantas features usa un modelo ya entrenado.
+    """Devuelve (columnas totales, columnas con coeficiente distinto de cero).
 
-    Que hace
-    --------
-    Devuelve el total de columnas que genera la expansion polinomica y cuantas de
-    ellas reciben un coeficiente distinto de cero. Con Lasso la segunda cifra es
-    menor que la primera: la penalizacion L1 lleva coeficientes exactamente a cero,
-    y por eso funciona tambien como metodo de seleccion de variables (Clase 3,
-    slide 90).
-
-    Parametros
-    ----------
-    modelo : Pipeline
-        Ya entrenado con .fit().
-    X : pd.DataFrame
-        Datos de entrada, para inferir la cantidad de columnas.
-
-    Devuelve
-    --------
-    tuple[int, int]
-        (columnas totales, columnas con coeficiente distinto de cero).
+    Con Lasso la segunda cifra es menor: la penalizacion L1 selecciona variables.
     """
     coefs = modelo.named_steps["regresion"].coef_
     return len(coefs), int((coefs != 0).sum())
@@ -218,44 +83,15 @@ def evaluar_cv(
     nombre: str,
     cv: KFold | None = None,
 ) -> tuple[pd.DataFrame, dict]:
-    """Evalua un modelo con validacion cruzada y devuelve el detalle por fold.
+    """Corre la validacion cruzada y devuelve (detalle por fold, resumen promediado).
 
-    Que hace
-    --------
-    Para cada fold: entrena el modelo con los datos de entrenamiento del fold y
-    calcula el RMSE y el R2 tanto sobre esos datos (train) como sobre los datos
-    reservados (validacion).
-
-    Por que se reporta el RMSE de train ademas del de validacion
-    -----------------------------------------------------------
-    La consigna 2.3 pide los dos. La diferencia entre ambos es el
-    "generalization gap" (Clase 2, slides 76-77): si el error de train es mucho
-    menor que el de validacion, el modelo esta memorizando ruido del
-    entrenamiento en lugar de aprender la relacion real.
-
-    Parametros
-    ----------
-    modelo : Pipeline
-        Modelo sin entrenar.
-    X, y : pd.DataFrame, pd.Series
-        Variables de entrada y target del TRAIN. Nunca del test.
-    nombre : str
-        Etiqueta del modelo, para identificarlo en la tabla comparativa.
-    cv : KFold | None
-        Esquema de validacion. Si es None se usa crear_kfold().
-
-    Devuelve
-    --------
-    tuple[pd.DataFrame, dict]
-        - DataFrame con una fila por fold: rmse_train, rmse_val, r2_train, r2_val.
-        - dict con el resumen promediado sobre los folds, listo para apilar en
-          una tabla comparativa de modelos.
+    Reporta RMSE de train y de validacion. La diferencia entre ambos es el
+    generalization gap.
     """
     if cv is None:
         cv = crear_kfold()
 
-    # scoring negativo: scikit-learn asume "mas alto es mejor", asi que devuelve
-    # el RMSE con signo cambiado. Lo revertimos abajo.
+    # scikit-learn asume "mas alto es mejor", asi que devuelve el RMSE negado.
     resultados = cross_validate(
         modelo,
         X,
@@ -286,30 +122,7 @@ def evaluar_cv(
 
 
 def tabla_coeficientes(modelo: Pipeline) -> pd.DataFrame:
-    """Extrae los coeficientes de un modelo lineal ya entrenado.
-
-    Que hace
-    --------
-    Asocia cada coeficiente con el nombre de la feature que le corresponde y los
-    ordena por magnitud.
-
-    Como se interpretan
-    -------------------
-    Las numericas estan estandarizadas, asi que su coeficiente indica cuanto
-    cambia el costo predicho al aumentar esa variable en un desvio estandar. Las
-    columnas one-hot valen 0 o 1, asi que su coeficiente es la diferencia
-    respecto de la categoria de referencia.
-
-    Parametros
-    ----------
-    modelo : Pipeline
-        Ya entrenado con .fit().
-
-    Devuelve
-    --------
-    pd.DataFrame
-        Columnas: coeficiente y coef_abs, ordenado por magnitud descendente.
-    """
+    """Coeficientes del modelo entrenado, con el nombre de cada feature y ordenados por magnitud."""
     nombres = modelo.named_steps["preprocesamiento"].get_feature_names_out()
     coefs = modelo.named_steps["regresion"].coef_
 
