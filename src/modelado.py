@@ -22,9 +22,10 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import Lasso, LinearRegression
 from sklearn.model_selection import KFold, cross_validate
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
 from src.config import N_SPLITS, RANDOM_SEED
 from src.preprocesamiento import construir_preprocesador
@@ -80,6 +81,94 @@ def crear_modelo_lineal() -> Pipeline:
         ("preprocesamiento", construir_preprocesador()),
         ("regresion", LinearRegression()),
     ])
+
+
+def crear_modelo_polinomico(
+    grado: int,
+    alpha: float | None = None,
+    max_iter: int = 1_000_000,
+) -> Pipeline:
+    """Arma un modelo de regresion polinomica, con o sin regularizacion L1.
+
+    Que hace
+    --------
+    Devuelve un Pipeline de cuatro pasos:
+      1. `preprocesamiento`: one-hot + z-score (igual que el modelo lineal).
+      2. `polinomica`: PolynomialFeatures genera todas las potencias hasta `grado`
+         y todos los productos cruzados entre variables.
+      3. `reescalado`: StandardScaler sobre las columnas nuevas.
+      4. `regresion`: LinearRegression si alpha es None, o Lasso si se pasa alpha.
+
+    Por que se vuelve a escalar despues de la expansion polinomica
+    -------------------------------------------------------------
+    PolynomialFeatures crea columnas nuevas (cuadrados y productos) cuyas escalas
+    no tienen nada que ver con las de las originales: el cuadrado de una variable
+    estandarizada ya no tiene media 0 ni desvio 1. Sin reescalar, la penalizacion
+    L1 castigaria a esas columnas por su magnitud y no por su utilidad, que es el
+    mismo argumento de la Fase 3.
+
+    Sobre el nombre del parametro de regularizacion
+    -----------------------------------------------
+    En las clases el parametro se llama lambda. En scikit-learn se llama `alpha`
+    y es exactamente lo mismo: la fuerza de la penalizacion. Cuanto mas alto, mas
+    se fuerza a los coeficientes hacia cero.
+
+    Parametros
+    ----------
+    grado : int
+        Grado maximo del polinomio. Con grado=1 el resultado es equivalente al
+        modelo lineal de la Fase 4.
+    alpha : float | None
+        Fuerza de la regularizacion L1 (el lambda de la clase). None = sin regularizar.
+    max_iter : int
+        Iteraciones maximas del optimizador de Lasso. Se fija alto porque con
+        muchas features y alphas chicos la convergencia es lenta.
+
+    Devuelve
+    --------
+    Pipeline
+        Sin entrenar.
+    """
+    pasos = [
+        ("preprocesamiento", construir_preprocesador()),
+        ("polinomica", PolynomialFeatures(degree=grado, include_bias=False)),
+        ("reescalado", StandardScaler()),
+    ]
+
+    if alpha is None:
+        pasos.append(("regresion", LinearRegression()))
+    else:
+        pasos.append(("regresion", Lasso(alpha=alpha, max_iter=max_iter,
+                                         random_state=RANDOM_SEED)))
+
+    return Pipeline(pasos)
+
+
+def contar_features(modelo: Pipeline, X: pd.DataFrame) -> tuple[int, int]:
+    """Cuenta cuantas features usa un modelo ya entrenado.
+
+    Que hace
+    --------
+    Devuelve el total de columnas que genera la expansion polinomica y cuantas de
+    ellas reciben un coeficiente distinto de cero. Con Lasso la segunda cifra es
+    menor que la primera: la penalizacion L1 lleva coeficientes exactamente a cero,
+    y por eso funciona tambien como metodo de seleccion de variables (Clase 3,
+    slide 90).
+
+    Parametros
+    ----------
+    modelo : Pipeline
+        Ya entrenado con .fit().
+    X : pd.DataFrame
+        Datos de entrada, para inferir la cantidad de columnas.
+
+    Devuelve
+    --------
+    tuple[int, int]
+        (columnas totales, columnas con coeficiente distinto de cero).
+    """
+    coefs = modelo.named_steps["regresion"].coef_
+    return len(coefs), int((coefs != 0).sum())
 
 
 def evaluar_cv(

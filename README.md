@@ -105,13 +105,14 @@ TP1-regresion-insurance/
 │   ├── 01_carga_y_split.ipynb   # Fase 1: carga y separación train/test
 │   ├── 02_limpieza_y_eda.ipynb  # Fase 2: limpieza y análisis exploratorio
 │   ├── 03_preprocesamiento_y_features.ipynb   # Fase 3: encoding, escalado, features
-│   └── 04_regresion_lineal.ipynb              # Fase 4: k-fold y regresión lineal
+│   ├── 04_regresion_lineal.ipynb              # Fase 4: k-fold y regresión lineal
+│   └── 05_polinomica_y_regularizacion.ipynb   # Fase 5: polinómica y L1
 ├── src/
 │   ├── config.py                # Rutas, semilla y esquema de partición
 │   ├── data.py                  # Carga, deduplicación, split y persistencia
 │   ├── exploracion.py           # Faltantes y detección de outliers (IQR, z-score)
 │   ├── preprocesamiento.py      # ColumnTransformer: one-hot + escalado z-score
-│   └── modelado.py              # k-fold, modelos y evaluación con RMSE
+│   └── modelado.py              # k-fold, modelos (lineal y polinómico) y evaluación
 ├── reports/
 │   └── figures/                 # Gráficos para la presentación
 ├── requirements.txt
@@ -191,6 +192,10 @@ Entrega: 25/08/2026 (24 h antes de la defensa).
 | 4 | Esquema de validación | **k-fold con k = 5**, sólo sobre el train | Clase 2 slide 85; usa los datos de forma más eficiente que un dev fijo |
 | 4 | Preprocesamiento dentro del `Pipeline` | Sí | `cross_validate` lo reajusta en cada fold; evita que los folds de validación contaminen la media y el desvío |
 | 4 | Resultado regresión lineal | RMSE val **6.123,65** · train 6.075,92 · R² 0.72 | Gap de 47,73 (0.8%): sin overfitting |
+| 5 | Grados de polinomio evaluados | 1, 2 y 3 | Grado 4 descartado: 494 features para 1069 filas (2.2 por parámetro) |
+| 5 | Reescalado tras la expansión polinómica | Sí | Los cuadrados y productos tienen escalas nuevas; sin reescalar L1 penalizaría por magnitud |
+| 5 | Valores de lambda (L1) | 0.001, 0.01, 0.1, 1, 10, 100, 1000 | Los 4 de la Clase 3 más 3 mayores: con `charges` en miles, λ < 1 no tiene efecto medible |
+| 5 | **Mejor modelo** | **Grado 2, λ = 100** · RMSE val **4.905,3** · R² 0.822 | 19.9% mejor que el lineal; 20 de 44 features sobreviven a L1 |
 
 ---
 
@@ -224,12 +229,11 @@ Entrega: 25/08/2026 (24 h antes de la defensa).
   - [x] k-fold cross-validation sobre el train (k = 5)
   - [x] Entrenamiento dentro del CV
   - [x] RMSE de train y de validación
-- [ ] **Fase 5 — Regresión polinómica, selección y regularización** *(consignas 3.1, 3.2, 3.3, 4)*
-  - [ ] Transformación polinómica para varios grados
-  - [ ] Entrenamiento sobre las variables transformadas
-  - [ ] Selección wrapper (RFE/RFECV) sobre el espacio polinómico, dentro del CV
-  - [ ] Regularización L1 (Lasso) con un par de valores de lambda (selección embedded)
-  - [ ] Tabla de RMSE de train y validación por grado y lambda
+- [x] **Fase 5 — Regresión polinómica y regularización** *(consignas 3.1, 3.2, 3.3, 4)*
+  - [x] Transformación polinómica: grados 1, 2 y 3
+  - [x] Entrenamiento sobre las variables transformadas
+  - [x] Regularización L1 (Lasso) con 7 valores de lambda por grado (selección embedded)
+  - [x] Tabla de RMSE de train y validación por grado y lambda
 - [ ] **Fase 6 — Evaluación final y comparación** *(consigna 5)*
   - [ ] Evaluación en test (una única vez)
   - [ ] ¿Qué modelo obtuvo menor error?
