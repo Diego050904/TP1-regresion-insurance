@@ -27,6 +27,11 @@ data/processed/*
 reports/figures/*
 !reports/figures/.gitkeep
 
+# ---- Presentacion ----
+# Se entrega por separado; no forma parte del repositorio.
+*.pptx
+~$*.pptx
+
 # ---- Respaldo local de documentacion ----
 # Copia de los docstrings extendidos que estaban en src/ antes de simplificarlos.
 # Es material de consulta personal, no forma parte de la entrega.
