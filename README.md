@@ -106,7 +106,8 @@ TP1-regresion-insurance/
 │   ├── 02_limpieza_y_eda.ipynb  # Fase 2: limpieza y análisis exploratorio
 │   ├── 03_preprocesamiento_y_features.ipynb   # Fase 3: encoding, escalado, features
 │   ├── 04_regresion_lineal.ipynb              # Fase 4: k-fold y regresión lineal
-│   └── 05_polinomica_y_regularizacion.ipynb   # Fase 5: polinómica y L1
+│   ├── 05_polinomica_y_regularizacion.ipynb   # Fase 5: polinómica y L1
+│   └── 06_evaluacion_final.ipynb              # Fase 6: evaluación en test
 ├── src/
 │   ├── config.py                # Rutas, semilla y esquema de partición
 │   ├── data.py                  # Carga, deduplicación, split y persistencia
@@ -196,6 +197,10 @@ Entrega: 25/08/2026 (24 h antes de la defensa).
 | 5 | Reescalado tras la expansión polinómica | Sí | Los cuadrados y productos tienen escalas nuevas; sin reescalar L1 penalizaría por magnitud |
 | 5 | Valores de lambda (L1) | 0.001, 0.01, 0.1, 1, 10, 100, 1000 | Los 4 de la Clase 3 más 3 mayores: con `charges` en miles, λ < 1 no tiene efecto medible |
 | 5 | **Mejor modelo** | **Grado 2, λ = 100** · RMSE val **4.905,3** · R² 0.822 | 19.9% mejor que el lineal; 20 de 44 features sobreviven a L1 |
+| 5 | Estabilidad de la selección | Repeated k-fold, 50 particiones | Grado 2 y grado 3 con λ=100 quedan empatados (6 de diferencia, desvío 382); se desempata por simplicidad |
+| 6 | Modelo entregado | Polinómica g2 + Lasso λ=100, entrenado con las 1069 filas | Clase 2 slide 88: el modelo elegido se reentrena con todo el train |
+| 6 | **RMSE en test** | **4.630,26** · MAE 2.879,09 · R² 0.880 | IC 95% bootstrap: [3.814 , 5.403]. 22.3% mejor que el lineal (5.956,34) |
+| 6 | RMSE que se promete | ~4.900 | Se reporta la estimación de validación cruzada, más conservadora que el test |
 
 ---
 
@@ -234,11 +239,11 @@ Entrega: 25/08/2026 (24 h antes de la defensa).
   - [x] Entrenamiento sobre las variables transformadas
   - [x] Regularización L1 (Lasso) con 7 valores de lambda por grado (selección embedded)
   - [x] Tabla de RMSE de train y validación por grado y lambda
-- [ ] **Fase 6 — Evaluación final y comparación** *(consigna 5)*
-  - [ ] Evaluación en test (una única vez)
-  - [ ] ¿Qué modelo obtuvo menor error?
-  - [ ] ¿Cuál implementarían en una aplicación real? Justificar
-  - [ ] ¿Qué RMSE esperar en datos nuevos?
+- [x] **Fase 6 — Evaluación final y comparación** *(consigna 5)*
+  - [x] Evaluación en test (una única vez)
+  - [x] ¿Qué modelo obtuvo menor error?
+  - [x] ¿Cuál implementarían en una aplicación real? Justificar
+  - [x] ¿Qué RMSE esperar en datos nuevos?
 - [ ] **Fase 7 — Entrega**
   - [ ] Presentación de 10 minutos (incluye intro teórica: train/validación/test)
   - [ ] README final
