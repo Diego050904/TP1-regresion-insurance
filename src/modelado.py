@@ -23,7 +23,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import Lasso, LinearRegression
-from sklearn.model_selection import KFold, cross_validate
+from sklearn.model_selection import KFold, RepeatedKFold, cross_validate
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
@@ -59,6 +59,46 @@ def crear_kfold(n_splits: int = N_SPLITS, semilla: int = RANDOM_SEED) -> KFold:
         Con shuffle activado: las filas se mezclan antes de repartirse.
     """
     return KFold(n_splits=n_splits, shuffle=True, random_state=semilla)
+
+
+def crear_repeated_kfold(
+    n_splits: int = N_SPLITS,
+    n_repeats: int = 10,
+    semilla: int = RANDOM_SEED,
+) -> RepeatedKFold:
+    """Crea un k-fold repetido: el mismo esquema, pero con varios repartos distintos.
+
+    Que hace
+    --------
+    Corre el k-fold `n_repeats` veces, y en cada repeticion mezcla las filas de
+    otra forma antes de armar los folds. Con n_splits=5 y n_repeats=10 cada modelo
+    se evalua sobre 50 particiones en lugar de 5.
+
+    Para que sirve
+    --------------
+    El RMSE de validacion de un k-fold depende de como cayeron las filas en cada
+    fold. Cuando dos modelos difieren en poco, esa diferencia puede deberse al
+    reparto y no al modelo. Promediar sobre muchos repartos hace que la
+    comparacion no dependa de una unica semilla.
+
+    Es la variacion que sugiere la catedra: usar semillas distintas para la
+    validacion (no para el split train/test, donde la semilla fija es lo correcto).
+
+    Parametros
+    ----------
+    n_splits : int
+        Folds por repeticion.
+    n_repeats : int
+        Cuantas veces se repite el k-fold con repartos distintos.
+    semilla : int
+        Semilla base. Fija la secuencia de repartos, de modo que el resultado
+        sigue siendo reproducible.
+
+    Devuelve
+    --------
+    RepeatedKFold
+    """
+    return RepeatedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=semilla)
 
 
 def crear_modelo_lineal() -> Pipeline:
